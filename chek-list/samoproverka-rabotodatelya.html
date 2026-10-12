@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Самопроверка работодателя по ТК РТ</title>
+<style>
+  :root {
+    --ink: #1d2433;
+    --muted: #5b6475;
+    --line: #c9cfdb;
+    --accent: #1f5f8b;
+    --accent-soft: #e8f1f8;
+    --warn: #9a3b12;
+    --warn-soft: #fbeee6;
+    --tip-soft: #f3f6ea;
+    --tip: #4b6116;
+    --bg: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e6e9ef; --muted: #a3abba; --line: #3a4252; --accent: #7db7e0;
+      --accent-soft: #1b2a38; --warn: #f0a37c; --warn-soft: #3a261c;
+      --tip-soft: #252c1b; --tip: #b9d17a; --bg: #12161d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e6e9ef; --muted: #a3abba; --line: #3a4252; --accent: #7db7e0;
+    --accent-soft: #1b2a38; --warn: #f0a37c; --warn-soft: #3a261c;
+    --tip-soft: #252c1b; --tip: #b9d17a; --bg: #12161d;
+  }
+  @page { size: A4; margin: 12mm 11mm 14mm 11mm; }
+  @media print {
+    :root { --ink:#1d2433; --muted:#5b6475; --line:#c9cfdb; --accent:#1f5f8b; --accent-soft:#e8f1f8;
+            --warn:#9a3b12; --warn-soft:#fbeee6; --tip-soft:#f3f6ea; --tip:#4b6116; --bg:#fff; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page-break { break-before: page; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Noto Sans", "DejaVu Sans", "Liberation Sans", Arial, sans-serif;
+    font-size: 9.6pt; line-height: 1.35;
+  }
+  .wrap { max-width: 190mm; margin: 0 auto; padding: 0 16px; }
+  @media print { .wrap { padding: 0; } }
+  h1 { font-size: 19pt; margin: 4mm 0 1mm; color: var(--accent); letter-spacing: -0.2px; }
+  .sub { color: var(--muted); margin: 0 0 4mm; }
+  .card {
+    border: 1px solid var(--line); border-radius: 6px; padding: 3mm 4mm; margin: 3mm 0;
+    break-inside: avoid;
+  }
+  .card.accent { background: var(--accent-soft); border-color: transparent; }
+  .card.warn { background: var(--warn-soft); border-color: transparent; }
+  .card h3 { margin: 0 0 1.5mm; font-size: 10.5pt; }
+  .fill { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm 6mm; margin: 2mm 0 1mm; }
+  .fill div { border-bottom: 1px solid var(--muted); padding-top: 5mm; font-size: 8pt; color: var(--muted); }
+  @media (max-width: 600px) { .fill { grid-template-columns: 1fr; } }
+  ul.compact { margin: 1mm 0 0; padding-left: 5mm; }
+  ul.compact li { margin: 0.6mm 0; }
+  ul.checks { list-style: none; padding-left: 1mm; }
+  h2 {
+    font-size: 12.5pt; margin: 6mm 0 2mm; padding: 1.6mm 3mm; color: #fff;
+    background: var(--accent); border-radius: 4px; break-after: avoid;
+  }
+  h2 small { font-weight: normal; opacity: .85; font-size: 9pt; }
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid var(--line); padding: 1.4mm 1.8mm; vertical-align: top; text-align: left; }
+  thead th { background: var(--accent-soft); font-size: 8.2pt; color: var(--muted); font-weight: 600; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  td.n { width: 7mm; color: var(--muted); text-align: right; }
+  td.norm { width: 30mm; font-size: 8.4pt; color: var(--accent); }
+  td.box, th.box { width: 9mm; text-align: center; padding: 1mm 0; }
+  td.box::before { content: ""; display: inline-block; width: 3.6mm; height: 3.6mm; border: 1.2px solid var(--muted); border-radius: 1px; margin-top: .4mm; }
+  .q { font-weight: 600; }
+  .tip { display: block; margin-top: .8mm; font-size: 8.4pt; color: var(--tip); background: var(--tip-soft); padding: .8mm 1.6mm; border-radius: 3px; }
+  .tip b { font-weight: 700; }
+  .err { display: block; margin-top: .8mm; font-size: 8.4pt; color: var(--warn); background: var(--warn-soft); padding: .8mm 1.6mm; border-radius: 3px; }
+  .tag { display: inline-block; font-size: 7.2pt; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 0 1.4mm; margin-left: 1mm; font-weight: normal; white-space: nowrap; }
+  .legend { display: flex; flex-wrap: wrap; gap: 2mm 5mm; font-size: 8.4pt; margin-top: 1.5mm; }
+  .legend span.tip, .legend span.err { display: inline-block; margin: 0; }
+  .plan td { height: 8.5mm; }
+  .foot { color: var(--muted); font-size: 8pt; margin-top: 5mm; border-top: 1px solid var(--line); padding-top: 2mm; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; }
+  @media (max-width: 600px) { .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Самопроверка работодателя по ТК РТ</h1>
+<p class="sub">Чек-лист для подготовки к проверке Службы госнадзора в сфере труда, миграции и занятости. Основа — официальный перечень контрольных вопросов (утв. 10.10.2022), разложенный на конкретные пункты, со ссылками на ТК РТ (ред. 17.06.2026) и подзаконные акты.</p>
+
+<div class="card">
+  <div class="fill">
+    <div>Организация / ИП</div>
+    <div>Дата самопроверки</div>
+    <div>Проверил(а), должность</div>
+  </div>
+</div>
+
+<div class="card accent">
+  <h3>Как пользоваться</h3>
+  <ul class="compact">
+    <li>Отмечайте по каждому пункту: <b>Да</b> — выполняется, <b>Нет</b> — нарушение, <b>Н/т</b> — не требуется (например, нет несовершеннолетних). Это те же отметки, что ставит инспектор.</li>
+    <li>Каждое «Нет» перенесите в <b>план исправлений</b> в конце. Сначала исправьте пункты, помеченные красным: за них чаще всего штрафуют.</li>
+    <li>Метка <span class="tag">И-1</span> — номер вопроса в официальном чек-листе инспекции 2022 г.: этот пункт инспектор проверяет напрямую.</li>
+  </ul>
+  <div class="legend">
+    <span class="tip"><b>Подсказка</b> — как сделать правильно</span>
+    <span class="err"><b>Частая ошибка</b> — где обычно «прокалываются»</span>
+  </div>
+</div>
+
+<div class="card warn">
+  <h3>Чем рискуете (КоАП РТ, извлечение в ред. ≈ 2020 — суммы сверить с действующей редакцией)</h3>
+  <ul class="compact">
+    <li><b>Ст. 94</b> — нарушение законодательства о труде (работа без оформления ТД, нарушение возраста приёма, необоснованное увольнение, отказ в отпуске, необеспечение гарантий): должностным лицам <b>20–30 показателей для расчётов</b>, повторно в течение года — <b>40–50</b>.</li>
+    <li><b>Ст. 98</b> — незаконное отстранение от работы: 30–40. <b>Ст. 95, 108</b> — отказ в приёме по квоте, в том числе лицам с инвалидностью: 30–50. <b>Ст. 109</b> — сокрытие страхового случая: юрлицу 100–200.</li>
+    <li><b>Ст. 685</b> — приём на работу военнообязанных и юношей призывного возраста, не состоящих на воинском учёте: 5–10, повторно — 10–12. <b>Ст. 686–688</b> — оповещение, документы и сведения для военкомата: 2–10.</li>
+    <li>Кроме штрафа: выплата среднего заработка за задержку трудовой книжки (ч. 5 ст. 52 ТК), проценты за задержку зарплаты (ч. 5 ст. 158 ТК), восстановление на работе по суду.</li>
+  </ul>
+  <div style="font-size:8.2pt;color:var(--muted);margin-top:1mm">Размер показателя для расчётов на 2026 г. — сверить (по данным СМИ, 78 сомони).</div>
+</div>
+
+<h2>1. Приём на работу <small>· ст. 21–28, 52, 57 ТК</small></h2>
+<div class="tablewrap"><table>
+<thead><tr><th>№</th><th>Что проверить</th><th>Норма</th><th class="box">Да</th><th class="box">Нет</th><th class="box">Н/т</th></tr></thead>
+<tbody>
+<tr><td class="n">1</td><td><span class="q">С каждым работником заключён письменный трудовой договор в 2 экземплярах, подписанный обеими сторонами; второй экземпляр выдан работнику</span><span class="tag">И-1</span><span class="tag">И-65</span>
+<span class="err"><b>Частая ошибка:</b> человек уже работает, а договор «оформим потом». Трудовые отношения всё равно возникли с первого дня работы (ч. 10 ст. 26), а за работу без ТД предусмотрен штраф по ст. 94 КоАП.</span>
+<span class="tip"><b>Подсказка:</b> возьмите с работника подпись о получении экземпляра прямо на экземпляре работодателя.</span></td>
+<td class="norm">ч. 1, 10 ст. 26</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">2</td><td><span class="q">В ТД есть все обязательные условия ч. 2 ст. 24</span>: реквизиты, паспорт и ИНН работника, место работы, должность, условия труда (если работа вредная или тяжёлая), дата начала, срок, режим, отпуск, оплата, права и обязанности, гарантии, страхование, ответственность, дата и порядковый номер договора
+<span class="tip"><b>Подсказка:</b> сделайте шаблон ТД с этими 18 пунктами и сверяйте с ним каждый договор.</span></td>
+<td class="norm">ч. 2 ст. 24</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">3</td><td><span class="q">Срочные ТД заключены законно</span>: срок не менее 1 года (кроме замещения, определённой работы и сезона), в договоре указана причина срочности
+<span class="err"><b>Частая ошибка:</b> перезаключать срочные договоры «по кругу». После повторного заключения договор считается бессрочным (ч. 3 ст. 25). Если по окончании срока никто не потребовал прекращения, договор тоже становится бессрочным (ч. 7 ст. 25).</span></td>
+<td class="norm">ст. 25; ч. 6 ст. 24</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">4</td><td><span class="q">У работника взяты только документы из перечня ч. 4 ст. 26</span>: паспорт, трудовая книжка (кроме тех, кто работает впервые), документ об образовании (если нужен), военный билет или приписное свидетельство, медицинская справка (если нужна), ИНН, пенсионное удостоверение, справка о судимости (если её требует закон)
+<span class="err"><b>Частая ошибка:</b> требовать «лишние» документы, например справку о браке или прописку. Это запрещено ч. 5 ст. 26.</span></td>
+<td class="norm">ч. 4–5 ст. 26</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">5</td><td><span class="q">Военнообязанные и юноши призывного возраста приняты только с военным билетом или приписным свидетельством</span>
+<span class="tip"><b>Подсказка:</b> снимите копию первой страницы и страницы со штампом учёта и сообщите военкомату о приёме. Нет приписного — направьте человека встать на учёт до приёма.</span></td>
+<td class="norm">абз. 5 ч. 4 ст. 26; КоАП ст. 685</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">6</td><td><span class="q">Есть заявление работника и приказ о приёме; приказ объявлен под роспись не позднее 3 рабочих дней</span></td>
+<td class="norm">ч. 6 ст. 26</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">7</td><td><span class="q">Работник до начала работы ознакомлен с ПВТР и локальными актами по своей работе</span>; есть его подпись в листе ознакомления</td>
+<td class="norm">ч. 8 ст. 26</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">8</td><td><span class="q">Испытательный срок</span> записан в ТД, не превышает 3 месяцев и не установлен тем, кому он запрещён: лицам до 18 лет, молодым специалистам, принятым по конкурсу, переведённым, лицам с инвалидностью по рекомендации
+<span class="tip"><b>Подсказка:</b> если испытания нет в ТД, работник считается принятым без испытания (ч. 5 ст. 28). Уволить по итогам испытания можно, только письменно предупредив работника <b>не ранее чем за 7 календарных дней</b> до конца срока и указав причины (ч. 8 ст. 28).</span></td>
+<td class="norm">ст. 28</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">9</td><td><span class="q">Возраст соблюдён</span>: работнику не меньше 15 лет; работа с 14 лет (и младше — в творческих организациях) только для учащихся, с согласия родителя и без ущерба учёбе</td>
+<td class="norm">ч. 2–3 ст. 21; КоАП ст. 94</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">10</td><td><span class="q">На отказ в приёме кандидат получил письменное обоснование в течение 3 дней (если просил)</span>; не было отказов беременным, женщинам с детьми до 3 лет, квотникам</td>
+<td class="norm">ст. 23; ст. 7</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">11</td><td><span class="q">Есть письменное согласие работника на обработку персональных данных</span>; доступ к личным делам есть только у уполномоченных лиц</td>
+<td class="norm">ст. 57</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<h2>2. Трудовые книжки и кадровые документы <small>· ст. 10, 52, 59, 81, 107 ТК; ПП № 154</small></h2>
+<div class="tablewrap"><table>
+<thead><tr><th>№</th><th>Что проверить</th><th>Норма</th><th class="box">Да</th><th class="box">Нет</th><th class="box">Н/т</th></tr></thead>
+<tbody>
+<tr><td class="n">12</td><td><span class="q">Трудовые книжки ведутся на всех, кто проработал больше 5 дней</span>, в том числе на сезонных и временных работников; на домашних работников и надомников у физлиц книжка не ведётся<span class="tag">И-1</span></td>
+<td class="norm">ч. 3 ст. 52; ПП № 154 (1999)</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">13</td><td><span class="q">Записи о приёме, переводе и поощрениях внесены не позднее недели после приказа и дословно совпадают с его текстом</span>
+<span class="tip"><b>Подсказка:</b> ведите книгу учёта движения трудовых книжек; выдачу книжки фиксируйте подписью работника.</span></td>
+<td class="norm">п. 5 Инструкции, ПП № 154</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">14</td><td><span class="q">Утверждены Правила внутреннего трудового распорядка (ПВТР), согласованные с представителями работников</span><span class="tag">И-16</span></td>
+<td class="norm">ст. 59</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">15</td><td><span class="q">Локальные акты не ухудшают положение работников по сравнению с ТК, КД и ТД</span>: такие нормы недействительны
+<span class="err"><b>Частая ошибка:</b> «штрафы» рублём за опоздания, прописанные в положении. Удержания допустимы только в случаях из ст. 163.</span></td>
+<td class="norm">ч. 2 ст. 10</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">16</td><td><span class="q">Ведётся табель учёта рабочего времени</span>; в нём отдельно отмечены сверхурочные, ночные часы, выходные и праздники, командировки</td>
+<td class="norm">ст. 81</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">17</td><td><span class="q">График отпусков на год составлен, согласован с профсоюзом (представителями) и доведён до всех работников</span></td>
+<td class="norm">ч. 2 ст. 107</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">18</td><td><span class="q">С материально ответственными лицами есть письменные договоры о полной (или коллективной) материальной ответственности</span><span class="tag">И-7</span>
+<span class="tip"><b>Подсказка:</b> без такого договора полную ответственность работника (кассира, кладовщика) доказать сложно, остаётся предел среднемесячного заработка.</span></td>
+<td class="norm">ст. 190, 191</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">19</td><td><span class="q">Если работники инициировали переговоры — ведутся переговоры о коллективном договоре; заключённый КД выполняется и зарегистрирован</span><span class="tag">И-22</span></td>
+<td class="norm">гл. 29–32; КоАП ст. 99–102</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<h2>3. Рабочее время <small>· ст. 66–87 ТК</small></h2>
+<div class="tablewrap"><table>
+<thead><tr><th>№</th><th>Что проверить</th><th>Норма</th><th class="box">Да</th><th class="box">Нет</th><th class="box">Н/т</th></tr></thead>
+<tbody>
+<tr><td class="n">20</td><td><span class="q">Нормальная продолжительность — не более 40 часов в неделю</span><span class="tag">И-3</span></td>
+<td class="norm">ст. 67</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">21</td><td><span class="q">Сокращённое время установлено тем, кому положено, без снижения оплаты</span>: на вредных работах — не более 35 ч/нед; лицам 14–16 лет — 24 ч, 16–18 лет — 35 ч; лицам с инвалидностью I–II группы — 36 ч/нед и не более 6 ч в день</td>
+<td class="norm">ст. 68, 69, 211, 260; ПП № 521</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">22</td><td><span class="q">Сверхурочные — только в исключительных случаях (ст. 80) и с согласия работника</span>; не более 4 часов за 2 дня подряд (2 часа на вредных работах) и не более <b>120 часов в год</b>; при 12-часовой смене сверхурочные запрещены
+<span class="tip"><b>Подсказка:</b> ведите отдельный журнал сверхурочных по каждому работнику с накопительным итогом за год.</span></td>
+<td class="norm">ст. 79, 80</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">23</td><td><span class="q">Ночное время — с 22:00 до 6:00</span>; если на ночь приходится не меньше половины смены, она короче на 1 час</td>
+<td class="norm">ст. 77</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">24</td><td><span class="q">Перерыв на обед — не позднее 4 часов от начала работы, не дольше 2 часов</span>; перерыв закреплён в ПВТР или графике сменности</td>
+<td class="norm">ст. 83</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">25</td><td><span class="q">Отдых между сменами — не менее 12 часов</span></td>
+<td class="norm">ст. 85</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">26</td><td><span class="q">Выходные</span>: при 5-дневке — 2 дня, при 6-дневке — 1 день; общий выходной — воскресенье; у сменных работников — по графику, согласованному с представителями работников</td>
+<td class="norm">ст. 86</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">27</td><td><span class="q">Работа в выходные — только в исключительных случаях из ч. 2 ст. 87, по согласованию с представителями работников</span>; работник выбрал компенсацию: отгул или двойная оплата
+<span class="err"><b>Частая ошибка:</b> вызывать «на пару часов в субботу» без приказа и согласования, а потом ничего не компенсировать.</span></td>
+<td class="norm">ст. 87, 88</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<h2>4. Отпуска <small>· ст. 90–118 ТК</small></h2>
+<div class="tablewrap"><table>
+<thead><tr><th>№</th><th>Что проверить</th><th>Норма</th><th class="box">Да</th><th class="box">Нет</th><th class="box">Н/т</th></tr></thead>
+<tbody>
+<tr><td class="n">28</td><td><span class="q">Ежегодный отпуск — не менее 24 календарных дней</span>; праздники внутри отпуска продлевают его<span class="tag">И-4</span></td>
+<td class="norm">ст. 93</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">29</td><td><span class="q">Дополнительные отпуска предоставлены</span>: за вредные условия, за ненормированный день, за стаж, в высокогорье — по спискам Правительства</td>
+<td class="norm">ст. 95–100; ПП № 521, 547, 197</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">30</td><td><span class="q">Работника известили о начале отпуска не позднее чем за 15 дней</span></td>
+<td class="norm">ч. 4 ст. 107</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">31</td><td><span class="q">Отпускные выплачены не позднее чем за неделю до отпуска</span> и посчитаны по среднему заработку</td>
+<td class="norm">ст. 112; ПП № 313</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">32</td><td><span class="q">Отпуск не заменяется деньгами</span>, кроме компенсации при увольнении
+<span class="err"><b>Частая ошибка:</b> «продать» отпуск работающему сотруднику. Ст. 91 это прямо запрещает.</span></td>
+<td class="norm">ст. 91</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">33</td><td><span class="q">Отпуск в удобное время предоставлен льготникам</span>: лицам до 18 лет, родителям двух и более детей до 14 лет или ребёнка-инвалида, учителям, совместителям (одновременно с отпуском по основной работе) и др.</td>
+<td class="norm">ч. 3 ст. 107; ст. 222</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<h2>5. Заработная плата <small>· ст. 139–163 ТК</small></h2>
+<div class="tablewrap"><table>
+<thead><tr><th>№</th><th>Что проверить</th><th>Норма</th><th class="box">Да</th><th class="box">Нет</th><th class="box">Н/т</th></tr></thead>
+<tbody>
+<tr><td class="n">34</td><td><span class="q">Оклад за полную норму не ниже МРОТ — 1300 сомони в месяц</span>, без учёта доплат, надбавок и премий; в районах с коэффициентами МРОТ считается с коэффициентом<span class="tag">И-2</span>
+<span class="err"><b>Частая ошибка:</b> «добирать» до МРОТ премией или доплатой за ночь. В МРОТ они не входят (ч. 3 ст. 143).</span></td>
+<td class="norm">ст. 143; Указ № 1132 (2026); ПП № 303</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">35</td><td><span class="q">Зарплата выплачивается не реже чем раз в полмесяца</span>; дни выплаты указаны в ТД, КД или локальном акте; если день выплаты выпадает на выходной — платите накануне</td>
+<td class="norm">ч. 1–2 ст. 158</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">36</td><td><span class="q">Зарплата выплачивается безналично в сомони</span>; натуральная оплата — только с согласия работника и не больше 20%; за банковскую карту работник не платит</td>
+<td class="norm">ст. 159, 160</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">37</td><td><span class="q">Сверхурочные, выходные и праздники оплачены не ниже чем вдвойне</span>; работникам на месячном окладе за выходные и праздники — не ниже одинарной ставки сверх оклада в пределах месячной нормы и двойной — сверх неё (ч. 3 ст. 154)</td>
+<td class="norm">ст. 154; распор. № 62/104 (рекоменд.)</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">38</td><td><span class="q">Ночные часы оплачены не ниже чем в 1,5 размера</span>; конкретный размер закреплён в КД или локальном акте</td>
+<td class="norm">ст. 156</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">39</td><td><span class="q">Удержания — только по основаниям ст. 163</span>; всего не более 20% (в случаях, предусмотренных законом, — 50%); по исполнительным документам работнику остаётся не менее 50%
+<span class="tip"><b>Подсказка:</b> удержание за недостачу по распоряжению работодателя — не больше среднемесячного заработка. Остальное взыскивается через суд или по соглашению.</span></td>
+<td class="norm">ст. 163, 189</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">40</td><td><span class="q">Нет задержек зарплаты</span>; при задержке по вине работодателя начисляются проценты по учётной ставке за каждый день</td>
+<td class="norm">ч. 5 ст. 158</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">41</td><td><span class="q">Мигранты и граждане РТ на одинаковых должностях получают одинаково</span><span class="tag">И-44</span></td>
+<td class="norm">ст. 7</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">42</td><td><span class="q">На вредных работах установлена повышенная оплата</span>; в отдалённых и высокогорных районах применяются коэффициенты</td>
+<td class="norm">ст. 145, 148; ПП № 458, 303</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<h2>6. Дисциплина и увольнение <small>· ст. 39–56, 62–65 ТК</small></h2>
+<div class="tablewrap"><table>
+<thead><tr><th>№</th><th>Что проверить</th><th>Норма</th><th class="box">Да</th><th class="box">Нет</th><th class="box">Н/т</th></tr></thead>
+<tbody>
+<tr><td class="n">43</td><td><span class="q">До взыскания запрошено письменное объяснение</span>; при отказе составлен акт; за один проступок — одно взыскание; приказ объявлен под роспись в течение 3 рабочих дней</td>
+<td class="norm">ст. 63</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">44</td><td><span class="q">Сроки взыскания соблюдены</span>: не позднее 1 месяца со дня обнаружения и 6 месяцев со дня проступка (2 лет — если проступок выявлен ревизией); во время болезни, отпуска и командировки взыскание не налагается</td>
+<td class="norm">ст. 64; ч. 5 ст. 63</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">45</td><td><span class="q">Увольнение по инициативе работодателя — только по основаниям ст. 42</span>; не во время болезни, отпуска или командировки (кроме ликвидации)
+<span class="err"><b>Частая ошибка:</b> уволить «по собственному» под давлением вместо законного основания. В суде такое увольнение отменят и работника восстановят (ст. 54–55).</span></td>
+<td class="norm">ст. 42; КоАП ст. 94</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">46</td><td><span class="q">Профсоюз (представители работников) уведомлён не позднее чем за 2 недели</span>; получено их письменное решение; увольнение — не позднее месяца после согласия</td>
+<td class="norm">ст. 44</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">47</td><td><span class="q">При сокращении или ликвидации работник письменно предупреждён не менее чем за 2 месяца</span> (при несоответствии должности — за 1 месяц); ему предоставлялся минимум 1 оплачиваемый день в неделю на поиск работы; предложены вакансии (ч. 3 ст. 42); соблюдено преимущественное право (ст. 43)</td>
+<td class="norm">ст. 42, 43, 45</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">48</td><td><span class="q">Орган занятости уведомлён о сокращении или ликвидации не менее чем за 2 месяца</span>: должности, квалификация, зарплата, сроки<span class="tag">И-5</span></td>
+<td class="norm">ч. 4 ст. 45; абз. 1 ч. 2 ст. 130</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">49</td><td><span class="q">Выходное пособие выплачено, если положено, — не менее 3 среднемесячных окладов</span></td>
+<td class="norm">ст. 51</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">50</td><td><span class="q">В последний день работы выдана трудовая книжка</span> (с основанием увольнения со ссылкой на статью) и выплачены все суммы, включая компенсацию за неиспользованный отпуск
+<span class="tip"><b>Подсказка:</b> за каждый день задержки книжки по вине работодателя платится средний заработок (ч. 5 ст. 52).</span></td>
+<td class="norm">ч. 5 ст. 52; ч. 3 ст. 158; ст. 118</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">51</td><td><span class="q">Не уволены по инициативе работодателя беременные, лица с детьми до 3 лет или с ребёнком-инвалидом</span> (кроме ликвидации — и тогда с обязательным трудоустройством); срочный ТД беременной (12+ недель) продлён по её заявлению</td>
+<td class="norm">ст. 215</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<h2>7. Особые категории работников <small>· гл. 15–17, 24 ТК</small></h2>
+<div class="tablewrap"><table>
+<thead><tr><th>№</th><th>Что проверить</th><th>Норма</th><th class="box">Да</th><th class="box">Нет</th><th class="box">Н/т</th></tr></thead>
+<tbody>
+<tr><td class="n">52</td><td><span class="q">Работники до 18 лет</span>: приняты после медосмотра, проходят его ежегодно; не заняты на запрещённых работах; не работают ночью, сверхурочно и вахтой; не ездят в командировки; из отпуска не отзываются<span class="tag">И-19</span></td>
+<td class="norm">ст. 208, 210, 211, 213; ПП № 169</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">53</td><td><span class="q">Беременные</span>: не работают ночью, в выходные и праздники, сверхурочно; не ездят в командировки; из отпуска не отзываются<span class="tag">И-17</span></td>
+<td class="norm">ч. 1 ст. 217</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">54</td><td><span class="q">Женщины с детьми до 14 лет и лица, ухаживающие за больными членами семьи или детьми-инвалидами</span>: ночная и сверхурочная работа, вахта и командировки — только с их письменного согласия</td>
+<td class="norm">ч. 2 ст. 217</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">55</td><td><span class="q">Женщины не заняты на работах из списка запрещённых</span></td>
+<td class="norm">ст. 216; ПП № 568 (2023)</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">56</td><td><span class="q">Отпуск по беременности и родам и отпуск по уходу за ребёнком (до 1,5 и до 3 лет) предоставлены; пособия начислены</span><span class="tag">И-20</span></td>
+<td class="norm">ст. 223–226; ПП № 630</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">57</td><td><span class="q">Работники с инвалидностью</span>: ночная и сверхурочная работа, выходные и командировки — только с письменного согласия; квота соблюдена<span class="tag">И-62</span></td>
+<td class="norm">ст. 258–263; КоАП ст. 108</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">58</td><td><span class="q">Совместители</span>: заключён отдельный ТД; есть справка с основной работы о характере и условиях труда</td>
+<td class="norm">ст. 228–235; ПП № 122</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">59</td><td><span class="q">Дистанционные работники, надомники, домашние работники</span>: ТД содержит условия, специальные для этих видов работы<span class="tag">И-10</span><span class="tag">И-11</span></td>
+<td class="norm">ст. 247–257; ПП № 159</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<h2>8. Командировки <small>· ст. 174–177 ТК</small></h2>
+<div class="tablewrap"><table>
+<thead><tr><th>№</th><th>Что проверить</th><th>Норма</th><th class="box">Да</th><th class="box">Нет</th><th class="box">Н/т</th></tr></thead>
+<tbody>
+<tr><td class="n">60</td><td><span class="q">Командировка оформлена приказом и командировочным удостоверением</span> с отметками о прибытии и убытии<span class="tag">И-18</span></td>
+<td class="norm">ст. 175, 176</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">61</td><td><span class="q">Командировка дольше 30 календарных дней — только с согласия работника</span></td>
+<td class="norm">ч. 2 ст. 176</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">62</td><td><span class="q">Расходы возмещены</span>: проезд, проживание, суточные
+<span class="tip"><b>Подсказка:</b> для бюджетных организаций размеры установлены ПП от 18.07.2026 № 496 (текста в базе нет — сверить). Для остальных работодателей они служат нижним порогом (ч. 2 ст. 177). Свои размеры закрепите в положении о командировках.</span></td>
+<td class="norm">ст. 177; ПП № 496 (⚠ сверить)</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<h2>9. Охрана труда <small>· гл. 35–38 ТК</small></h2>
+<div class="tablewrap"><table>
+<thead><tr><th>№</th><th>Что проверить</th><th>Норма</th><th class="box">Да</th><th class="box">Нет</th><th class="box">Н/т</th></tr></thead>
+<tbody>
+<tr><td class="n">63</td><td><span class="q">Все новые и переведённые работники прошли инструктаж по охране труда</span>; есть журнал инструктажей с подписями; без инструктажа к работе не допускают<span class="tag">И-23</span>
+<span class="err"><b>Частая ошибка:</b> инструктаж «по факту» без журнала. При несчастном случае это первое, что запросят.</span></td>
+<td class="norm">ст. 336; ст. 348</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">64</td><td><span class="q">Предварительные и периодические медосмотры проводятся за счёт работодателя</span> там, где это обязательно: вредные, тяжёлые, ночные работы, водители, общепит, торговля, работа с населением; кто уклоняется — не допускается к работе<span class="tag">И-21</span></td>
+<td class="norm">ст. 333; распор. МЗ № 536; ПП № 702</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">65</td><td><span class="q">Аттестация рабочих мест проводится не реже 1 раза в 5 лет</span>; результаты и инструкции опубликованы на доске и в электронном виде в течение месяца<span class="tag">И-37</span></td>
+<td class="norm">ст. 348</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">66</td><td><span class="q">Спецодежда и СИЗ выдаются бесплатно и по нормам</span>; их хранение, стирку и ремонт обеспечивает работодатель; на вредных работах выдаются молоко и ЛПП</td>
+<td class="norm">ст. 334, 335; ПП № 592</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">67</td><td><span class="q">Служба охраны труда создана, если работников больше 50</span>; при меньшем числе назначен специалист или ответственный (приказ)</td>
+<td class="norm">ст. 355</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">68</td><td><span class="q">Руководитель и ответственные за охрану труда проходили обучение не реже 1 раза в 5 лет</span>; на опасных производствах работники сдают экзамен и периодически переаттестуются</td>
+<td class="norm">ч. 5 ст. 350; ч. 2 ст. 336</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">69</td><td><span class="q">Несчастные случаи расследуются немедленно и оформляются актом</span>; копия выдаётся пострадавшему в течение 3 дней; ведётся журнал учёта<span class="tag">И-34</span>
+<span class="err"><b>Частая ошибка:</b> «договориться» с пострадавшим и не составлять акт. Это сокрытие страхового случая: юрлицу грозит штраф 100–200 показателей (ст. 109 КоАП).</span></td>
+<td class="norm">ст. 342; ПП № 462</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">70</td><td><span class="q">Работники застрахованы от несчастных случаев и профзаболеваний</span>; обеспечены питьевая вода, санитарно-бытовые помещения, первая медицинская помощь; освещённость, шум и микроклимат в норме<span class="tag">И-24</span></td>
+<td class="norm">ст. 340, 341, 348</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<h2>10. Занятость, воинский учёт, мигранты <small>· ст. 130 ТК; Закон № 1753; КоАП гл. 40</small></h2>
+<div class="tablewrap"><table>
+<thead><tr><th>№</th><th>Что проверить</th><th>Норма</th><th class="box">Да</th><th class="box">Нет</th><th class="box">Н/т</th></tr></thead>
+<tbody>
+<tr><td class="n">71</td><td><span class="q">О каждой вакансии сообщено в орган занятости в течение 3 рабочих дней с момента её появления</span><span class="tag">И-60</span>
+<span class="err"><b>Частая ошибка:</b> про эту обязанность почти все забывают, а инспектор проверяет её отдельным вопросом.</span></td>
+<td class="norm">абз. 3 ч. 2 ст. 130</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">72</td><td><span class="q">По направлениям органа занятости ответ (принят или отказ с причиной) дан в течение 5 рабочих дней</span></td>
+<td class="norm">абз. 4 ч. 2 ст. 130</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">73</td><td><span class="q">Квоты для социально уязвимых групп соблюдены</span>, если они установлены для организации<span class="tag">И-61</span></td>
+<td class="norm">ст. 23; КоАП ст. 95, 108</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">74</td><td><span class="q">Ведётся воинский учёт</span>: есть ответственный, военкомату вовремя передаются списки и сведения о военнообязанных и призывниках, работники оповещаются о вызовах</td>
+<td class="norm">Закон № 1753 (2021); КоАП ст. 684–688</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">75</td><td><span class="q">Иностранные работники</span> работают по разрешениям; их ТД зарегистрированы в местной миграционной службе<span class="tag">И-42</span><span class="tag">И-43</span></td>
+<td class="norm">миграционное законодательство (текста в базе нет)</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+<tr><td class="n">76</td><td><span class="q">На видном месте есть стенд или папка с ТК, ПВТР и материалами по охране труда, миграции и занятости</span><span class="tag">И-16</span><span class="tag">И-36</span><span class="tag">И-67</span>
+<span class="tip"><b>Подсказка:</b> вопрос о «наглядной агитации» есть в каждом из трёх разделов официального чек-листа. Это дешёвый пункт, закройте его в первую очередь.</span></td>
+<td class="norm">чек-лист 2022</td><td class="box"></td><td class="box"></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<div class="page-break"></div>
+<h2>11. Папка «на случай проверки» <small>· держите готовой</small></h2>
+<div class="two">
+<div class="card">
+  <h3>Общие документы</h3>
+  <ul class="compact checks">
+    <li>☐ Устав / свидетельство ИП, приказ о назначении руководителя</li>
+    <li>☐ Штатное расписание</li>
+    <li>☐ ПВТР с листами ознакомления</li>
+    <li>☐ Положение об оплате труда и премировании</li>
+    <li>☐ Коллективный договор (если есть) и подтверждение регистрации</li>
+    <li>☐ График отпусков на текущий год</li>
+    <li>☐ Табели учёта рабочего времени, журнал сверхурочных</li>
+    <li>☐ Ведомости или банковские выписки по зарплате за 12 месяцев</li>
+    <li>☐ Книга учёта движения трудовых книжек</li>
+  </ul>
+</div>
+<div class="card">
+  <h3>Охрана труда и учёт</h3>
+  <ul class="compact checks">
+    <li>☐ Приказ об ответственном за охрану труда / положение о службе</li>
+    <li>☐ Журналы инструктажей (вводный, на рабочем месте)</li>
+    <li>☐ Инструкции по охране труда по профессиям</li>
+    <li>☐ Карта аттестации рабочих мест (не старше 5 лет)</li>
+    <li>☐ Ведомости выдачи СИЗ и спецодежды</li>
+    <li>☐ Направления и заключения медосмотров</li>
+    <li>☐ Журнал и акты о несчастных случаях</li>
+    <li>☐ Документы воинского учёта, переписка с военкоматом</li>
+    <li>☐ Сообщения о вакансиях в орган занятости</li>
+  </ul>
+</div>
+</div>
+
+<div class="card">
+  <h3>На каждого работника — личное дело</h3>
+  <ul class="compact checks" style="columns:2;column-gap:6mm">
+    <li>☐ Заявление о приёме, приказ с подписью работника</li>
+    <li>☐ Трудовой договор и все дополнительные соглашения</li>
+    <li>☐ Копии документов из ч. 4 ст. 26</li>
+    <li>☐ Согласие на обработку персональных данных</li>
+    <li>☐ Заявления на отпуск и приказы об отпуске</li>
+    <li>☐ Приказы о переводах, взысканиях, поощрениях</li>
+    <li>☐ Договор о материальной ответственности (если нужен)</li>
+  </ul>
+</div>
+
+<div class="card warn">
+  <h3>Во время проверки</h3>
+  <ul class="compact">
+    <li>Работодатель обязан обеспечить беспрепятственный допуск инспекторов и выполнять их предписания в установленные сроки (ст. 348 ТК).</li>
+    <li>Попросите документ, на основании которого проводится проверка, и её предмет. Порядок проверок установлен Законом РТ «О проверках деятельности хозяйствующих субъектов» — его текста в базе нет, детали сверяйте по «Адлии».</li>
+    <li>Передавайте копии документов по описи, сами копии оставляйте у себя. Возражения на акт подавайте письменно.</li>
+  </ul>
+</div>
+
+<h2>12. План исправлений</h2>
+<div class="tablewrap"><table class="plan">
+<thead><tr><th style="width:12mm">№ пункта</th><th>Что исправить</th><th style="width:38mm">Ответственный</th><th style="width:24mm">Срок</th><th style="width:16mm">Готово</th></tr></thead>
+<tbody>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+<tr><td></td><td></td><td></td><td></td><td class="box"></td></tr>
+</tbody></table></div>
+
+<p class="foot">Составлено по тексту Трудового кодекса РТ от 23.07.2016 № 1329 в ред. 17.06.2026, перечню контрольных вопросов Службы госнадзора в сфере труда, миграции и занятости (утв. 10.10.2022) и выдержке из КоАП РТ (ред. ≈ 2020). Это инструмент самопроверки, а не официальный документ. Суммы штрафов, МРОТ и показатель для расчётов сверяйте с действующими редакциями в ЦБПИ «Адлия». Метки И-N — номера вопросов официального чек-листа.</p>
+
+</div>
+</body>
+</html>
