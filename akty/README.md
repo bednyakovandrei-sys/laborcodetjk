@@ -15,3 +15,8 @@
 
 Имена файлов в `tekst/`: `<орган>-<номер>-<год>-<тема>.md`,
 например `pp-154-1999-trudovye-knizhki.md` (pp = постановление Правительства).
+
+**Таджикские PDF в «шрифтовой» кодировке** (вместо ҳ ҷ қ ӣ ӯ ғ стоят і ї ѕ њ ў љ):
+`pdftotext file.pdf file.txt && python3 -I scripts/tj_font_fix.py file.txt` → `file.tj.txt`;
+затем `python3 -I scripts/tj_build_md.py file.tj.txt out.md header.md '<regex начала текста акта>' [заголовки…]`
+— размечает `## Пункт N` и проверяет, что ни одно слово не потеряно. В `header.md` — реквизиты и рабочий перевод.
