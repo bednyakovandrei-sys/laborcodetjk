@@ -20,3 +20,4 @@
 `pdftotext file.pdf file.txt && python3 -I scripts/tj_font_fix.py file.txt` → `file.tj.txt`;
 затем `python3 -I scripts/tj_build_md.py file.tj.txt out.md header.md '<regex начала текста акта>' [заголовки…]`
 — размечает `## Пункт N` и проверяет, что ни одно слово не потеряно. В `header.md` — реквизиты и рабочий перевод.
+Если в одном PDF смешаны две шрифтовые кодировки (встречаются и ѕ/і, и ќ/ѓ) — `scripts/tj_font_fix_mixed.py` (определяет кодировку построчно).
