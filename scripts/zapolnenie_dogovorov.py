@@ -66,6 +66,16 @@ def latin_to_tj(s: str) -> str:
     return " ".join(out)
 
 
+def title_pinyin(s: str) -> str:
+    """Каждое слово (и часть через дефис) с большой буквы, остальные буквы маленькие: LI JIANWEI -> Li Jianwei."""
+    return re.sub(r"[A-Za-z]+", lambda m: m.group(0).capitalize(), s)
+
+
+def lower_first(s: str) -> str:
+    """Должность всегда с маленькой буквы: «Ронандаи экскватор» -> «ронандаи экскватор»."""
+    return s[:1].lower() + s[1:]
+
+
 def is_latin(s: str) -> bool:
     letters = [c for c in s if c.isalpha()]
     return bool(letters) and all(c.isascii() for c in letters)
@@ -116,6 +126,8 @@ class Person:
             return self._date(code, v)
         if isinstance(v, (dt.date, dt.datetime)):
             return to_date(v).strftime("%d.%m.%Y")
+        if code.startswith("ВАЗИФА") and isinstance(v, str):
+            return lower_first(v)
         return v
 
     def _date(self, code, v):
@@ -149,10 +161,11 @@ class Person:
         lat = self.row.get("ФИО_ЛАТ", "") or ""
         if code not in ("ФИО", "ФИО_ЛАТ") and self.row.get(code):
             cyr, lat = self.row[code], ""
+        lat = title_pinyin(lat)
         if not cyr and not lat and all(self.raw(c) is None for c in ("ФИО", "ФИО_ЛАТ", code)):
             return None
         if cyr and is_latin(cyr) and not lat:          # в «ФИО» лежит пиньин
-            cyr, lat = "", cyr
+            cyr, lat = "", title_pinyin(cyr)
         if lat and not cyr:
             cyr = latin_to_tj(lat)
             note = f"{code}: кириллица получена автотранслитом из «{lat}» — ПРОВЕРИТЬ"
