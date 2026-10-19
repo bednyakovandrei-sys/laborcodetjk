@@ -17,14 +17,17 @@
         - есть только кириллица -> выводится она одна.
   * Даты: САНА / САНА_СОЛИ / СОЛ / МОҲ / РӮЗ можно брать из одной колонки с датой.
   * В конце — отчёт по каждому человеку и каждому шаблону: что заполнено, что пусто, чего нет в Excel.
-    Отчёт печатается в консоль и сохраняется в report.txt и report.xlsx рядом с готовыми файлами.
+    Терминал не засоряется: пишутся только короткие итоги. Подробный отчёт — report.html (красивый, открывается
+    в браузере) и report.xlsx (таблица с цветами) в папке результата.
 """
 import argparse
 import datetime as dt
+import html
 import json
 import os
 import re
 import sys
+import webbrowser
 
 import openpyxl
 from docx import Document
@@ -137,9 +140,6 @@ class Person:
                 o = self.row.get(other)
                 if o and to_date(o):
                     d = to_date(o)
-                    note = f"{code}: взято из колонки {other}"
-                    if note not in self.notes:
-                        self.notes.append(note)
                     break
         if d is None:
             if code in ("СОЛ", "МОҲ", "РӮЗ"):
@@ -438,28 +438,120 @@ def main():
             st = fill_template(t, person, os.path.join(out, folder, name))
             report.append((person.label(), os.path.basename(t), f"{folder}/{name}", st, list(person.notes)))
 
-    # --- отчёт
-    lines = [f"ОТЧЁТ  | Excel: {xlsx} | лист: {sheet} | шапка: строка {hrow} | людей: {len(people)} | шаблонов: {len(tpls)}", ""]
-    for who, tpl, fname, st, notes in report:
-        lines += [f"■ {who}  —  {tpl}  →  {fname}",
-                  f"   заполнено ({len(st['filled'])}): {', '.join(st['filled']) or '—'}",
-                  f"   ПУСТО в Excel, оставлены пробелы ({len(st['empty'])}): {', '.join(st['empty']) or '—'}",
-                  f"   колонка НЕ выбрана, оставлены пробелы ({len(st['no_column'])}): {', '.join(st['no_column']) or '—'}"]
-        lines += [f"   ⚠ {x}" for x in notes]
-        lines.append("")
-    text = "\n".join(lines)
-    print("\n" + text)
-    with open(os.path.join(out, "report.txt"), "w", encoding="utf8") as f:
-        f.write(text)
+    build_reports(out, xlsx, sheet, hrow, people, tpls, report)
+    warn = sum(1 for r in report if r[3]["empty"] or r[3]["no_column"] or r[4])
+    print(f"\nГотово: людей {len(people)}, файлов {len(report)}, с пробелами/пометками: {warn}")
+    print(f"Папка:  {out}")
+    print(f"Отчёт:  {os.path.join(out, 'report.html')}  (и report.xlsx)")
+    try:
+        webbrowser.open("file://" + os.path.abspath(os.path.join(out, "report.html")))
+    except Exception:
+        pass
+
+
+CSS = """
+:root{--bg:#f4f6fa;--card:#fff;--ink:#1d2433;--mut:#6b7488;--line:#e3e7ef;--ok:#1f9d55;--okb:#e6f6ec;
+--em:#b7791f;--emb:#fff4d9;--no:#c53030;--nob:#fde8e8;--wa:#6b46c1;--wab:#efe9fb;--ac:#2b5cd6}
+@media (prefers-color-scheme:dark){:root{--bg:#141922;--card:#1c2330;--ink:#e8ecf4;--mut:#93a0b8;--line:#2b3446;
+--ok:#4ad28a;--okb:#16352a;--em:#f0b955;--emb:#3b2f14;--no:#ff8a8a;--nob:#3d1c1c;--wa:#b79cf5;--wab:#2a2142;--ac:#7aa2ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}.sub{color:var(--mut);margin-bottom:22px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:26px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi b{display:block;font-size:28px}.kpi span{color:var(--mut);font-size:13px}
+.person{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:18px;overflow:hidden}
+.ph{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.ph h2{margin:0;font-size:18px}.ph small{color:var(--mut)}
+.badge{font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px}
+.b-ok{background:var(--okb);color:var(--ok)}.b-warn{background:var(--emb);color:var(--em)}
+.doc{padding:14px 18px;border-bottom:1px dashed var(--line)}.doc:last-child{border-bottom:0}
+.dt{font-weight:600;margin-bottom:8px}.dt span{font-weight:400;color:var(--mut);font-size:13px}
+.row{display:flex;gap:8px;align-items:flex-start;margin:6px 0}
+.lab{flex:0 0 150px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding-top:4px}
+.l-ok{color:var(--ok)}.l-em{color:var(--em)}.l-no{color:var(--no)}.l-wa{color:var(--wa)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:12px ui-monospace,Menlo,Consolas,monospace;padding:3px 9px;border-radius:8px}
+.c-ok{background:var(--okb);color:var(--ok)}.c-em{background:var(--emb);color:var(--em)}
+.c-no{background:var(--nob);color:var(--no)}.none{color:var(--mut);font-size:13px;padding-top:3px}
+.note{background:var(--wab);color:var(--wa);padding:6px 10px;border-radius:8px;font-size:13px;margin:4px 0}
+.leg{color:var(--mut);font-size:13px;margin:-8px 0 20px}
+@media (max-width:640px){.lab{flex-basis:100%}.row{flex-direction:column;gap:2px}}
+"""
+
+
+def chips(items, cls):
+    if not items:
+        return '<span class="none">—</span>'
+    return "".join(f'<span class="chip {cls}">{html.escape(x)}</span>' for x in items)
+
+
+def build_reports(out, xlsx, sheet, hrow, people, tpls, report):
+    e = html.escape
+    tot_f = sum(len(r[3]["filled"]) for r in report)
+    tot_e = sum(len(r[3]["empty"]) for r in report)
+    tot_n = sum(len(r[3]["no_column"]) for r in report)
+    tot_w = sum(len(r[4]) for r in report)
+    by_person = {}
+    for r in report:
+        by_person.setdefault(r[2].split("/")[0], []).append(r)
+    parts = [f"<!doctype html><html lang='ru'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+             f"<title>Отчёт автозаполнения</title><style>{CSS}</style></head><body><div class='wrap'>",
+             "<h1>Отчёт автозаполнения</h1>",
+             f"<div class='sub'>{e(os.path.basename(xlsx))} · лист «{e(sheet)}» · шапка в строке {hrow} · "
+             f"{dt.datetime.now():%d.%m.%Y %H:%M}</div>",
+             "<div class='kpis'>"
+             f"<div class='kpi'><b>{len(people)}</b><span>человек</span></div>"
+             f"<div class='kpi'><b>{len(report)}</b><span>документов ({len(tpls)} шаблона)</span></div>"
+             f"<div class='kpi'><b style='color:var(--ok)'>{tot_f}</b><span>полей заполнено</span></div>"
+             f"<div class='kpi'><b style='color:var(--em)'>{tot_e}</b><span>пусто в Excel (пробелы)</span></div>"
+             f"<div class='kpi'><b style='color:var(--no)'>{tot_n}</b><span>колонка не выбрана (пробелы)</span></div>"
+             f"<div class='kpi'><b style='color:var(--wa)'>{tot_w}</b><span>пометок — проверить</span></div></div>",
+             "<div class='leg'>Зелёное — заполнено · жёлтое — ячейка в Excel пуста, в документе оставлены пробелы · "
+             "красное — для этого ключа не выбрана колонка · фиолетовое — автоматические действия, которые стоит проверить</div>"]
+    for folder, items in by_person.items():
+        bad = any(i[3]["empty"] or i[3]["no_column"] or i[4] for i in items)
+        parts.append(f"<div class='person'><div class='ph'><div><h2>{e(str(items[0][0]))}</h2><small>папка {e(folder)}</small></div>"
+                     f"<span class='badge {'b-warn' if bad else 'b-ok'}'>{'есть что проверить' if bad else 'всё заполнено'}</span></div>")
+        for who, tpl, fname, st, notes in items:
+            parts.append(f"<div class='doc'><div class='dt'>{e(tpl)} <span>→ {e(fname)}</span></div>"
+                         f"<div class='row'><div class='lab l-ok'>Заполнено · {len(st['filled'])}</div><div class='chips'>{chips(st['filled'], 'c-ok')}</div></div>"
+                         f"<div class='row'><div class='lab l-em'>Пусто в Excel · {len(st['empty'])}</div><div class='chips'>{chips(st['empty'], 'c-em')}</div></div>"
+                         f"<div class='row'><div class='lab l-no'>Нет колонки · {len(st['no_column'])}</div><div class='chips'>{chips(st['no_column'], 'c-no')}</div></div>")
+            for n in notes:
+                parts.append(f"<div class='note'>⚠ {e(n)}</div>")
+            parts.append("</div>")
+        parts.append("</div>")
+    parts.append("</div></body></html>")
+    with open(os.path.join(out, "report.html"), "w", encoding="utf8") as f:
+        f.write("".join(parts))
+
+    from openpyxl.styles import Alignment, Font, PatternFill
     wo = openpyxl.Workbook()
     ws = wo.active
-    ws.title = "report"
+    ws.title = "Отчёт"
     ws.append(["Человек", "Шаблон", "Файл", "Заполнено", "Пусто в Excel", "Колонка не выбрана", "Пометки"])
+    for c in ws[1]:
+        c.font = Font(bold=True, color="FFFFFF")
+        c.fill = PatternFill("solid", fgColor="2B5CD6")
+        c.alignment = Alignment(vertical="center", wrap_text=True)
     for who, tpl, fname, st, notes in report:
         ws.append([who, tpl, fname, ", ".join(st["filled"]), ", ".join(st["empty"]),
                    ", ".join(st["no_column"]), "; ".join(notes)])
+        r = ws.max_row
+        for col, key, color in ((4, "filled", "E6F6EC"), (5, "empty", "FFF4D9"), (6, "no_column", "FDE8E8")):
+            if st[key]:
+                ws.cell(r, col).fill = PatternFill("solid", fgColor=color)
+        if notes:
+            ws.cell(r, 7).fill = PatternFill("solid", fgColor="EFE9FB")
+    for col, w in zip("ABCDEFG", (24, 18, 42, 45, 38, 38, 48)):
+        ws.column_dimensions[col].width = w
+    for row in ws.iter_rows(min_row=2):
+        for c in row:
+            c.alignment = Alignment(vertical="top", wrap_text=True)
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
     wo.save(os.path.join(out, "report.xlsx"))
-    print(f"Готово. Папка: {out}")
 
 
 if __name__ == "__main__":
