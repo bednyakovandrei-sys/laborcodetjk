@@ -5,9 +5,11 @@
 Нужно:    pip install python-docx openpyxl
 
 Как работает
-  * Спрашивает: какой Excel-файл, какой ЛИСТ, какие шаблоны .docx (договор, приказ ...).
-  * Каждая СТРОКА листа = один человек; ЗАГОЛОВОК колонки = код в шаблоне без скобок:
-        {ФИО}  ->  колонка «ФИО»,   {ВАЗИФА_ХУРД}  ->  колонка «ВАЗИФА_ХУРД»  и т.д.
+  * Спрашивает: какой Excel-файл, какой ЛИСТ, какие шаблоны .docx (договор, приказ ...),
+    в какой СТРОКЕ шапка (заголовки) и в КАКОЙ КОЛОНКЕ лежит каждый ключ ({ФИО}, {РМА} ...).
+    Совпадающие по названию колонки подставляются сами — остаётся нажать Enter.
+    Выбор сохраняется в mapping_<файл>_<лист>.json и предлагается при следующем запуске.
+  * Каждая СТРОКА под шапкой = один человек. Для каждого человека создаётся своя папка.
   * Пустая ячейка (или нет такой колонки) -> в документе остаются пробелы.
   * ФИО: везде, где код начинается с «ФИО», выводится «Кириллица (Pinyin)».
         - есть кириллица и латиница в колонках ФИО и ФИО_ЛАТ -> берутся обе;
@@ -19,6 +21,7 @@
 """
 import argparse
 import datetime as dt
+import json
 import os
 import re
 import sys
@@ -103,10 +106,7 @@ class Person:
         self.notes = []                 # пометки для отчёта
 
     def raw(self, code):
-        for name in ALIASES.get(code, [code]):
-            if name in self.row:
-                return self.row[name]
-        return None                     # None = колонки нет, "" = ячейка пуста
+        return self.row.get(code)       # None = колонка не выбрана, "" = ячейка пуста
 
     def value(self, code):
         v = self.raw(code)
@@ -269,19 +269,88 @@ def safe(s):
     return re.sub(r"[^\w\-. ()]+", "_", s).strip() or "bez_imeni"
 
 
-def read_people(xlsx, sheet):
+def col_letter(i):
+    return openpyxl.utils.get_column_letter(i + 1)
+
+
+def short(v, n=18):
+    s = "" if v is None else str(v).replace("\n", " ")
+    return s if len(s) <= n else s[:n - 1] + "…"
+
+
+def load_rows(xlsx, sheet):
     wb = openpyxl.load_workbook(xlsx, data_only=True)
-    ws = wb[sheet]
-    rows = list(ws.iter_rows(values_only=True))
-    if not rows:
-        return []
-    head = [str(h).strip() if h is not None else "" for h in rows[0]]
-    people = []
-    for r in rows[1:]:
-        if all(c in (None, "") for c in r):
+    return [list(r) for r in wb[sheet].iter_rows(values_only=True)]
+
+
+def template_codes(paths):
+    """Все коды {…} во всех выбранных шаблонах в порядке появления."""
+    codes = []
+    for t in paths:
+        doc = Document(t)
+        for p in iter_paragraphs(doc):
+            for c in PH.findall(p.text):
+                if c not in codes:
+                    codes.append(c)
+    return codes
+
+
+def auto_column(code, header):
+    for name in ALIASES.get(code, [code]):
+        if name in header:
+            return header.index(name)
+    return None
+
+
+def choose_header_row(rows):
+    print("\nПервые строки листа:")
+    for i, r in enumerate(rows[:10], 1):
+        print(f"  строка {i}: " + " | ".join(short(c) for c in r[:10]))
+    default = next((i for i, r in enumerate(rows, 1) if any(c not in (None, "") for c in r)), 1)
+    while True:
+        s = input(f"В какой строке ШАПКА (заголовки)? [Enter = {default}]: ").strip()
+        try:
+            n = int(s) if s else default
+            if 1 <= n <= len(rows):
+                return n
+        except ValueError:
+            pass
+        print("Не понял, повторите.")
+
+
+def choose_mapping(codes, header, saved):
+    """codes -> индекс колонки или None. Показывает таблицу, даёт править."""
+    print("\nКолонки выбранной шапки:")
+    for i, h in enumerate(header):
+        print(f"  {col_letter(i):>3} (№{i + 1}): {h or '(пусто)'}")
+    mapping = {}
+    for c in codes:
+        if c in saved and saved[c] is not None and saved[c] < len(header):
+            mapping[c] = saved[c]
+        else:
+            mapping[c] = auto_column(c, header)
+    while True:
+        print("\nКлюч в шаблоне  →  колонка Excel")
+        for n, c in enumerate(codes, 1):
+            m = mapping[c]
+            print(f"  {n:>2}. {{{c}}}  →  " + (f"{col_letter(m)}: {header[m] or '(пусто)'}" if m is not None else "— не выбрана (будут пробелы)"))
+        s = input("\nEnter = всё верно; или номер ключа, который изменить: ").strip()
+        if not s:
+            return mapping
+        try:
+            code = codes[int(s) - 1]
+        except (ValueError, IndexError):
+            print("Не понял.")
             continue
-        people.append(Person({h: c for h, c in zip(head, r) if h}))
-    return people
+        v = input(f"Для {{{code}}} введите букву или номер колонки (A, B, 3 ...); 0 — не использовать: ").strip().upper()
+        if v == "0":
+            mapping[code] = None
+        elif v.isdigit() and 1 <= int(v) <= len(header):
+            mapping[code] = int(v) - 1
+        elif v.isalpha() and 1 <= openpyxl.utils.column_index_from_string(v) <= len(header):
+            mapping[code] = openpyxl.utils.column_index_from_string(v) - 1
+        else:
+            print("Такой колонки нет.")
 
 
 def main():
@@ -289,6 +358,7 @@ def main():
     ap.add_argument("--xlsx"), ap.add_argument("--sheet")
     ap.add_argument("--templates", nargs="*")
     ap.add_argument("--out")
+    ap.add_argument("--yes", action="store_true", help="не спрашивать про шапку и колонки (авто-подбор по названиям)")
     a = ap.parse_args()
     here = os.getcwd()
 
@@ -309,27 +379,59 @@ def main():
             sys.exit("В папке нет шаблонов .docx. Положите договор и приказ рядом или укажите --templates.")
         tpls = [ds[i] for i in ask_choice("Какие ШАБЛОНЫ заполнять?", ds, multi=True)]
 
-    people = read_people(xlsx, sheet)
+    rows = load_rows(xlsx, sheet)
+    if not rows:
+        sys.exit("Лист пустой.")
+    hrow = 1 if a.yes else choose_header_row(rows)
+    if a.yes:
+        hrow = next((i for i, r in enumerate(rows, 1) if any(c not in (None, "") for c in r)), 1)
+    header = [str(h).strip() if h is not None else "" for h in rows[hrow - 1]]
+
+    # ключи: из шаблонов + служебные, из которых считаются ФИО и даты
+    codes = template_codes(tpls)
+    for extra in ("ФИО", "ФИО_ЛАТ", "САНА"):
+        if extra not in codes:
+            codes.append(extra)
+
+    map_file = f"mapping_{safe(os.path.splitext(os.path.basename(xlsx))[0])}_{safe(sheet)}.json"
+    saved = {}
+    if os.path.exists(map_file) and not a.yes:
+        if input(f"\nНайден сохранённый выбор колонок ({map_file}). Использовать как основу? [Enter = да, n = нет]: ").strip().lower() != "n":
+            with open(map_file, encoding="utf8") as f:
+                saved = json.load(f)
+    mapping = {c: auto_column(c, header) for c in codes} if a.yes else choose_mapping(codes, header, saved)
+    with open(map_file, "w", encoding="utf8") as f:
+        json.dump(mapping, f, ensure_ascii=False, indent=1)
+
+    people = []
+    for r in rows[hrow:]:
+        if all(c in (None, "") for c in r):
+            continue
+        row = {c: (r[i] if i is not None and i < len(r) else "") for c, i in mapping.items() if i is not None}
+        people.append(Person(row))
     if not people:
-        sys.exit("На листе нет строк с данными (первая строка — заголовки, дальше — люди).")
+        sys.exit("Под шапкой нет строк с данными.")
+
     out = a.out or os.path.join(here, "zapolneno_" + dt.datetime.now().strftime("%Y%m%d_%H%M"))
     os.makedirs(out, exist_ok=True)
 
     report = []                                     # (человек, шаблон, файл, stats, notes)
     for n, person in enumerate(people, 1):
+        folder = f"{n:02d}_{safe(str(person.label()))}"
+        os.makedirs(os.path.join(out, folder), exist_ok=True)
         for t in tpls:
-            name = f"{n:02d}_{safe(str(person.label()))}_{os.path.splitext(os.path.basename(t))[0]}.docx"
+            name = f"{safe(os.path.splitext(os.path.basename(t))[0])}_{safe(str(person.label()))}.docx"
             person.notes = []
-            st = fill_template(t, person, os.path.join(out, name))
-            report.append((person.label(), os.path.basename(t), name, st, list(person.notes)))
+            st = fill_template(t, person, os.path.join(out, folder, name))
+            report.append((person.label(), os.path.basename(t), f"{folder}/{name}", st, list(person.notes)))
 
     # --- отчёт
-    lines = [f"ОТЧЁТ  | Excel: {xlsx} | лист: {sheet} | людей: {len(people)} | шаблонов: {len(tpls)}", ""]
+    lines = [f"ОТЧЁТ  | Excel: {xlsx} | лист: {sheet} | шапка: строка {hrow} | людей: {len(people)} | шаблонов: {len(tpls)}", ""]
     for who, tpl, fname, st, notes in report:
         lines += [f"■ {who}  —  {tpl}  →  {fname}",
                   f"   заполнено ({len(st['filled'])}): {', '.join(st['filled']) or '—'}",
                   f"   ПУСТО в Excel, оставлены пробелы ({len(st['empty'])}): {', '.join(st['empty']) or '—'}",
-                  f"   НЕТ колонки в Excel, оставлены пробелы ({len(st['no_column'])}): {', '.join(st['no_column']) or '—'}"]
+                  f"   колонка НЕ выбрана, оставлены пробелы ({len(st['no_column'])}): {', '.join(st['no_column']) or '—'}"]
         lines += [f"   ⚠ {x}" for x in notes]
         lines.append("")
     text = "\n".join(lines)
@@ -339,7 +441,7 @@ def main():
     wo = openpyxl.Workbook()
     ws = wo.active
     ws.title = "report"
-    ws.append(["Человек", "Шаблон", "Файл", "Заполнено", "Пусто в Excel", "Нет колонки", "Пометки"])
+    ws.append(["Человек", "Шаблон", "Файл", "Заполнено", "Пусто в Excel", "Колонка не выбрана", "Пометки"])
     for who, tpl, fname, st, notes in report:
         ws.append([who, tpl, fname, ", ".join(st["filled"]), ", ".join(st["empty"]),
                    ", ".join(st["no_column"]), "; ".join(notes)])
