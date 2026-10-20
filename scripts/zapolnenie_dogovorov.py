@@ -32,11 +32,16 @@ import html
 import json
 import os
 import re
+import shutil
 import sys
 import webbrowser
+import zipfile
 
 import openpyxl
-from docx import Document
+from docx.oxml import parse_xml
+from docx.oxml.ns import qn
+from docx.text.paragraph import Paragraph
+from lxml import etree
 
 SPACES = " " * 14                       # чем заменять пустые значения
 FIO_BOTH_EVERYWHERE = True              # во всех кодах ФИО* писать «Кирилица (Pinyin)»
@@ -190,20 +195,16 @@ class Person:
 
 
 # ------------------------------------------------------------- замена в docx
-def iter_paragraphs(doc):
-    def walk(container):
-        for p in container.paragraphs:
-            yield p
-        for t in getattr(container, "tables", []):
-            for row in t.rows:
-                for cell in row.cells:
-                    yield from walk(cell)
-    yield from walk(doc)
-    for s in doc.sections:
-        for part in (s.header, s.footer, s.first_page_header, s.first_page_footer,
-                     s.even_page_header, s.even_page_footer):
-            if part is not None:
-                yield from walk(part)
+# Шаблон обрабатывается «на уровне zip»: разбираются только текстовые части (документ, колонтитулы, сноски),
+# а картинки и прочее копируются потоком. Так не нужно грузить в память весь .docx для каждого человека
+# (раньше шаблон с тяжёлыми картинками съедал всю память -> MemoryError).
+TEXT_PART = re.compile(r"^word/(document|header\d*|footer\d*|footnotes|endnotes)\.xml$")
+MEDIA_EXT = (".png", ".jpg", ".jpeg", ".gif", ".emf", ".wmf", ".bmp", ".tif", ".tiff", ".wdp")
+
+
+def paragraphs_of(root):
+    """Все абзацы части, включая абзацы внутри таблиц и текстовых рамок."""
+    return [Paragraph(p, None) for p in root.iter(qn("w:p"))]
 
 
 def replace_in_paragraph(p, resolve):
@@ -240,7 +241,6 @@ def replace_in_paragraph(p, resolve):
 
 
 def fill_template(path, person, out_path):
-    doc = Document(path)
     stats = {"filled": [], "empty": [], "no_column": []}
 
     def resolve(code):
@@ -257,9 +257,23 @@ def fill_template(path, person, out_path):
             stats["filled"].append(code)
         return str(v)
 
-    for p in iter_paragraphs(doc):
-        replace_in_paragraph(p, resolve)
-    doc.save(out_path)
+    with zipfile.ZipFile(path) as zin, zipfile.ZipFile(out_path, "w") as zout:
+        for info in zin.infolist():
+            if info.is_dir():
+                continue
+            if TEXT_PART.match(info.filename):
+                root = parse_xml(zin.read(info))
+                for para in paragraphs_of(root):
+                    replace_in_paragraph(para, resolve)
+                data = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+                zout.writestr(zipfile.ZipInfo(info.filename, info.date_time), data, zipfile.ZIP_DEFLATED)
+            else:
+                new = zipfile.ZipInfo(info.filename, info.date_time)
+                new.external_attr = info.external_attr
+                # картинки уже сжаты — храним как есть (быстрее и без лишней памяти)
+                new.compress_type = zipfile.ZIP_STORED if info.filename.lower().endswith(MEDIA_EXT) else zipfile.ZIP_DEFLATED
+                with zin.open(info) as src, zout.open(new, "w", force_zip64=info.file_size > (1 << 30)) as dst:
+                    shutil.copyfileobj(src, dst, 1 << 20)
     return stats
 
 
@@ -308,11 +322,13 @@ def template_codes(paths):
     """Все коды {…} во всех выбранных шаблонах в порядке появления."""
     codes = []
     for t in paths:
-        doc = Document(t)
-        for p in iter_paragraphs(doc):
-            for c in PH.findall(p.text):
-                if c not in codes:
-                    codes.append(c)
+        with zipfile.ZipFile(t) as z:
+            for info in z.infolist():
+                if TEXT_PART.match(info.filename):
+                    for para in paragraphs_of(parse_xml(z.read(info))):
+                        for c in PH.findall(para.text):
+                            if c not in codes:
+                                codes.append(c)
     return codes
 
 
@@ -535,6 +551,8 @@ def main():
     out = a.out or os.path.join(here, "zapolneno_" + dt.datetime.now().strftime("%Y%m%d_%H%M"))
     os.makedirs(out, exist_ok=True)
 
+    heavy = [(os.path.basename(t), os.path.getsize(t) / 1048576) for t in tpls if os.path.getsize(t) > 5 * 1048576]
+    errors = []                                     # (человек, шаблон, текст ошибки)
     report = []                                     # (человек, шаблон, файл, stats, notes)
     for n, person in enumerate(people, 1):
         folder = f"{n:02d}_{safe(str(person.label()))}"
@@ -542,12 +560,21 @@ def main():
         for t in tpls:
             name = f"{safe(os.path.splitext(os.path.basename(t))[0])}_{safe(str(person.label()))}.docx"
             person.notes = []
-            st = fill_template(t, person, os.path.join(out, folder, name))
+            try:
+                st = fill_template(t, person, os.path.join(out, folder, name))
+            except Exception as ex:                 # один сбойный документ не должен ронять весь запуск
+                errors.append((person.label(), os.path.basename(t), f"{type(ex).__name__}: {ex}"))
+                continue
             report.append((person.label(), os.path.basename(t), f"{folder}/{name}", st, list(person.notes)))
 
-    build_reports(out, xlsx, sheet, hrow, people, tpls, report, skipped, filt)
+    build_reports(out, xlsx, sheet, hrow, people, tpls, report, skipped, filt, errors, heavy)
     warn = sum(1 for r in report if r[3]["empty"] or r[3]["no_column"] or r[4])
     print(f"\nГотово: людей {len(people)} (пропущено уволенных: {len(skipped)}), файлов {len(report)}, с пробелами/пометками: {warn}")
+    for nme, mb in heavy:
+        print(f"⚠ Шаблон «{nme}» весит {mb:.0f} МБ (тяжёлые картинки): каждый готовый файл будет такого же размера. "
+              "Сожмите картинки в шаблоне (Word: Формат рисунка → Сжать рисунки).")
+    if errors:
+        print(f"⚠ Не получилось создать документов: {len(errors)} — подробности в отчёте.")
     if fi is None and not a.all:
         print("⚠ Колонка «Санаи хориҷ» не выбрана — взяты ВСЕ работники, включая уволенных.")
     print(f"Папка:  {out}")
@@ -595,7 +622,7 @@ def chips(items, cls):
     return "".join(f'<span class="chip {cls}">{html.escape(x)}</span>' for x in items)
 
 
-def build_reports(out, xlsx, sheet, hrow, people, tpls, report, skipped=(), filt=""):
+def build_reports(out, xlsx, sheet, hrow, people, tpls, report, skipped=(), filt="", errors=(), heavy=()):
     e = html.escape
     tot_f = sum(len(r[3]["filled"]) for r in report)
     tot_e = sum(len(r[3]["empty"]) for r in report)
@@ -632,6 +659,13 @@ def build_reports(out, xlsx, sheet, hrow, people, tpls, report, skipped=(), filt
                 parts.append(f"<div class='note'>⚠ {e(n)}</div>")
             parts.append("</div>")
         parts.append("</div>")
+    if errors:
+        parts.append("<div class='person'><div class='ph'><div><h2>Не удалось создать</h2><small>документы с ошибкой</small></div>"
+                     f"<span class='badge b-warn'>{len(errors)}</span></div><div class='doc'>"
+                     + "".join(f"<div class='note'>⚠ {e(str(n))} — {e(str(t))}: {e(str(m))}</div>" for n, t, m in errors) + "</div></div>")
+    if heavy:
+        parts.append("<div class='note'>⚠ Тяжёлые шаблоны: " + ", ".join(f"{e(n)} ({mb:.0f} МБ)" for n, mb in heavy)
+                     + " — каждый документ будет такого размера. Сожмите картинки в шаблоне.</div>")
     if skipped:
         parts.append("<div class='person'><div class='ph'><div><h2>Пропущены: уже уволены</h2><small>у них заполнена «Санаи хориҷ»</small></div>"
                      f"<span class='badge b-warn'>{len(skipped)}</span></div><div class='doc'><div class='chips'>"
