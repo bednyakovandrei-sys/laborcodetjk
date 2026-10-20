@@ -10,6 +10,9 @@
     Совпадающие по названию колонки подставляются сами — остаётся нажать Enter.
     Выбор сохраняется в mapping_<файл>_<лист>.json и предлагается при следующем запуске.
   * Каждая СТРОКА под шапкой = один человек. Для каждого человека создаётся своя папка.
+  * Берутся ТОЛЬКО действующие работники: у кого колонка «Санаи хориҷ» (дата увольнения) ПУСТАЯ.
+    Колонка подбирается сама (Санаи хориҷ / Санаи хорич / Дата увольнения) или выбирается вместе с остальными
+    ключами; уволенные пропускаются и перечислены в отчёте. Чтобы взять всех — запуск с флагом --all.
   * Пустая ячейка (или нет такой колонки) -> в документе остаются пробелы.
   * ФИО: везде, где код начинается с «ФИО», выводится «Кириллица (Pinyin)».
         - есть кириллица и латиница в колонках ФИО и ФИО_ЛАТ -> берутся обе;
@@ -308,11 +311,30 @@ def template_codes(paths):
     return codes
 
 
+FIRED = "САНАИ_ХОРИҶ"                   # служебный ключ: колонка с датой увольнения (фильтр, в шаблонах не нужен)
+
+
+def _nk(x):
+    """Для сравнения названий колонок: без регистра, пробелов и знаков; ҷ=ч, ё=е, ӣ=и."""
+    x = str(x).lower().replace("ҷ", "ч").replace("ё", "е").replace("ӣ", "и").replace("ӯ", "у").replace("ҳ", "х")
+    return re.sub(r"[\W_]+", "", x)
+
+
 def auto_column(code, header):
+    if code == FIRED:
+        for i, h in enumerate(header):
+            k = _nk(h)
+            if k.startswith("санаихорич") or "увольн" in k or k in ("хорич", "хоричшудан"):
+                return i
+        return None
     for name in ALIASES.get(code, [code]):
         if name in header:
             return header.index(name)
     return None
+
+
+def is_empty(v):
+    return v is None or (isinstance(v, str) and v.strip() == "")
 
 
 def choose_header_row(rows):
@@ -346,6 +368,10 @@ def choose_mapping(codes, header, saved):
         print("\nКлюч в шаблоне  →  колонка Excel")
         for n, c in enumerate(codes, 1):
             m = mapping[c]
+            if c == FIRED:
+                print(f"  {n:>2}. ⛔ Санаи хориҷ (фильтр: берём только тех, у кого колонка ПУСТАЯ)  →  "
+                      + (f"{col_letter(m)}: {header[m] or '(пусто)'}" if m is not None else "— не выбрана (будут все работники)"))
+                continue
             print(f"  {n:>2}. {{{c}}}  →  " + (f"{col_letter(m)}: {header[m] or '(пусто)'}" if m is not None else "— не выбрана (будут пробелы)"))
         s = input("\nEnter = всё верно; или номер ключа, который изменить: ").strip()
         if not s:
@@ -355,7 +381,7 @@ def choose_mapping(codes, header, saved):
         except (ValueError, IndexError):
             print("Не понял.")
             continue
-        v = input(f"Для {{{code}}} введите букву или номер колонки (A, B, 3 ...); 0 — не использовать: ").strip().upper()
+        v = input(f"Для {'«Санаи хориҷ»' if code == FIRED else '{' + code + '}'} введите букву или номер колонки (A, B, 3 ...); 0 — не использовать: ").strip().upper()
         if v == "0":
             mapping[code] = None
         elif v.isdigit() and 1 <= int(v) <= len(header):
@@ -371,6 +397,7 @@ def main():
     ap.add_argument("--xlsx"), ap.add_argument("--sheet")
     ap.add_argument("--templates", nargs="*")
     ap.add_argument("--out")
+    ap.add_argument("--all", action="store_true", help="не фильтровать по «Санаи хориҷ» — взять всех, включая уволенных")
     ap.add_argument("--yes", action="store_true", help="не спрашивать про шапку и колонки (авто-подбор по названиям)")
     a = ap.parse_args()
     here = os.getcwd()
@@ -402,7 +429,7 @@ def main():
 
     # ключи: из шаблонов + служебные, из которых считаются ФИО и даты
     codes = template_codes(tpls)
-    for extra in ("ФИО", "ФИО_ЛАТ", "САНА"):
+    for extra in ("ФИО", "ФИО_ЛАТ", "САНА", FIRED):
         if extra not in codes:
             codes.append(extra)
 
@@ -416,14 +443,23 @@ def main():
     with open(map_file, "w", encoding="utf8") as f:
         json.dump(mapping, f, ensure_ascii=False, indent=1)
 
-    people = []
+    fi = None if a.all else mapping.get(FIRED)
+    people, skipped = [], []                          # skipped — уволенные (есть дата в «Санаи хориҷ»)
     for r in rows[hrow:]:
         if all(c in (None, "") for c in r):
             continue
         row = {c: (r[i] if i is not None and i < len(r) else "") for c, i in mapping.items() if i is not None}
-        people.append(Person(row))
+        p = Person(row)
+        if fi is not None and not is_empty(r[fi] if fi < len(r) else None):
+            d = to_date(r[fi]) if not isinstance(r[fi], str) else to_date(r[fi].strip())
+            skipped.append((p.label(), d.strftime("%d.%m.%Y") if d else str(r[fi]).strip()))
+            continue
+        people.append(p)
     if not people:
-        sys.exit("Под шапкой нет строк с данными.")
+        sys.exit("Нет ни одного действующего работника (у всех заполнена дата «Санаи хориҷ»)." if skipped
+                 else "Под шапкой нет строк с данными.")
+    filt = "выключен (--all)" if a.all else ("не задан: колонка «Санаи хориҷ» не найдена, взяты все" if fi is None
+                                              else f"колонка {col_letter(fi)}: только с пустой датой")
 
     out = a.out or os.path.join(here, "zapolneno_" + dt.datetime.now().strftime("%Y%m%d_%H%M"))
     os.makedirs(out, exist_ok=True)
@@ -438,9 +474,11 @@ def main():
             st = fill_template(t, person, os.path.join(out, folder, name))
             report.append((person.label(), os.path.basename(t), f"{folder}/{name}", st, list(person.notes)))
 
-    build_reports(out, xlsx, sheet, hrow, people, tpls, report)
+    build_reports(out, xlsx, sheet, hrow, people, tpls, report, skipped, filt)
     warn = sum(1 for r in report if r[3]["empty"] or r[3]["no_column"] or r[4])
-    print(f"\nГотово: людей {len(people)}, файлов {len(report)}, с пробелами/пометками: {warn}")
+    print(f"\nГотово: людей {len(people)} (пропущено уволенных: {len(skipped)}), файлов {len(report)}, с пробелами/пометками: {warn}")
+    if fi is None and not a.all:
+        print("⚠ Колонка «Санаи хориҷ» не выбрана — взяты ВСЕ работники, включая уволенных.")
     print(f"Папка:  {out}")
     print(f"Отчёт:  {os.path.join(out, 'report.html')}  (и report.xlsx)")
     try:
@@ -486,7 +524,7 @@ def chips(items, cls):
     return "".join(f'<span class="chip {cls}">{html.escape(x)}</span>' for x in items)
 
 
-def build_reports(out, xlsx, sheet, hrow, people, tpls, report):
+def build_reports(out, xlsx, sheet, hrow, people, tpls, report, skipped=(), filt=""):
     e = html.escape
     tot_f = sum(len(r[3]["filled"]) for r in report)
     tot_e = sum(len(r[3]["empty"]) for r in report)
@@ -499,9 +537,10 @@ def build_reports(out, xlsx, sheet, hrow, people, tpls, report):
              f"<title>Отчёт автозаполнения</title><style>{CSS}</style></head><body><div class='wrap'>",
              "<h1>Отчёт автозаполнения</h1>",
              f"<div class='sub'>{e(os.path.basename(xlsx))} · лист «{e(sheet)}» · шапка в строке {hrow} · "
-             f"{dt.datetime.now():%d.%m.%Y %H:%M}</div>",
+             f"{dt.datetime.now():%d.%m.%Y %H:%M} · фильтр «Санаи хориҷ»: {e(filt)}</div>",
              "<div class='kpis'>"
-             f"<div class='kpi'><b>{len(people)}</b><span>человек</span></div>"
+             f"<div class='kpi'><b>{len(people)}</b><span>действующих работников</span></div>"
+             f"<div class='kpi'><b style='color:var(--mut)'>{len(skipped)}</b><span>пропущено (есть «Санаи хориҷ»)</span></div>"
              f"<div class='kpi'><b>{len(report)}</b><span>документов ({len(tpls)} шаблона)</span></div>"
              f"<div class='kpi'><b style='color:var(--ok)'>{tot_f}</b><span>полей заполнено</span></div>"
              f"<div class='kpi'><b style='color:var(--em)'>{tot_e}</b><span>пусто в Excel (пробелы)</span></div>"
@@ -522,6 +561,10 @@ def build_reports(out, xlsx, sheet, hrow, people, tpls, report):
                 parts.append(f"<div class='note'>⚠ {e(n)}</div>")
             parts.append("</div>")
         parts.append("</div>")
+    if skipped:
+        parts.append("<div class='person'><div class='ph'><div><h2>Пропущены: уже уволены</h2><small>у них заполнена «Санаи хориҷ»</small></div>"
+                     f"<span class='badge b-warn'>{len(skipped)}</span></div><div class='doc'><div class='chips'>"
+                     + "".join(f"<span class='chip c-em'>{e(str(n))} — {e(str(d))}</span>" for n, d in skipped) + "</div></div></div>")
     parts.append("</div></body></html>")
     with open(os.path.join(out, "report.html"), "w", encoding="utf8") as f:
         f.write("".join(parts))
@@ -546,6 +589,16 @@ def build_reports(out, xlsx, sheet, hrow, people, tpls, report):
             ws.cell(r, 7).fill = PatternFill("solid", fgColor="EFE9FB")
     for col, w in zip("ABCDEFG", (24, 18, 42, 45, 38, 38, 48)):
         ws.column_dimensions[col].width = w
+    if skipped:
+        w2 = wo.create_sheet("Пропущены (уволены)")
+        w2.append(["Человек", "Санаи хориҷ"])
+        for c in w2[1]:
+            c.font = Font(bold=True, color="FFFFFF")
+            c.fill = PatternFill("solid", fgColor="6B7488")
+        for n, d in skipped:
+            w2.append([n, d])
+        w2.column_dimensions["A"].width = 36
+        w2.column_dimensions["B"].width = 16
     for row in ws.iter_rows(min_row=2):
         for c in row:
             c.alignment = Alignment(vertical="top", wrap_text=True)
