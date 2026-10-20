@@ -9,9 +9,12 @@
     в какой СТРОКЕ шапка (заголовки) и в КАКОЙ КОЛОНКЕ лежит каждый ключ ({ФИО}, {РМА} ...).
     Совпадающие по названию колонки подставляются сами — остаётся нажать Enter.
     Выбор сохраняется в mapping_<файл>_<лист>.json и предлагается при следующем запуске.
+  * ФИО может лежать в ТРЁХ колонках (НАСАБ, НОМ, НОМИ ПАДАР): у ключа можно указать несколько колонок
+    через запятую («F,G,H») — они склеятся в «Насаб Ном Номи падар» с правильным регистром.
+    Заголовки вида НАСАБ / НОМ / НОМИ ПАДАР подбираются сами.
   * Каждая СТРОКА под шапкой = один человек. Для каждого человека создаётся своя папка.
-  * Берутся ТОЛЬКО действующие работники: у кого колонка «Санаи хориҷ» (дата увольнения) ПУСТАЯ.
-    Колонка подбирается сама (Санаи хориҷ / Санаи хорич / Дата увольнения) или выбирается вместе с остальными
+  * Берутся ТОЛЬКО действующие работники: у кого колонка «ХОРИҶ» / «Санаи хориҷ» (дата увольнения) ПУСТАЯ.
+    Колонка подбирается сама (ХОРИҶ / Санаи хориҷ / Дата увольнения) или выбирается вместе с остальными
     ключами; уволенные пропускаются и перечислены в отчёте. Чтобы взять всех — запуск с флагом --all.
   * Пустая ячейка (или нет такой колонки) -> в документе остаются пробелы.
   * ФИО: везде, где код начинается с «ФИО», выводится «Кириллица (Pinyin)».
@@ -169,6 +172,8 @@ class Person:
             return None
         if cyr and is_latin(cyr) and not lat:          # в «ФИО» лежит пиньин
             cyr, lat = "", title_pinyin(cyr)
+        if cyr:
+            cyr = name_case(cyr)
         if lat and not cyr:
             cyr = latin_to_tj(lat)
             note = f"{code}: кириллица получена автотранслитом из «{lat}» — ПРОВЕРИТЬ"
@@ -181,7 +186,7 @@ class Person:
         return f"{cyr} ({lat})"
 
     def label(self):
-        return self.row.get("ФИО") or self.row.get("ФИО_ЛАТ") or "(без ФИО)"
+        return name_case(self.row.get("ФИО") or self.row.get("ФИО_ЛАТ") or "(без ФИО)")
 
 
 # ------------------------------------------------------------- замена в docx
@@ -311,26 +316,68 @@ def template_codes(paths):
     return codes
 
 
+def name_case(s: str) -> str:
+    """НАСАБ НОМ ПАДАР -> Насаб Ном Падар: слово целиком из больших или целиком из маленьких букв приводится
+    к виду «Слово»; смешанный регистр (уже правильный) не трогаем."""
+    def fix(m):
+        w = m.group(0)
+        return w[:1].upper() + w[1:].lower() if (w.isupper() or w.islower()) else w
+    return re.sub(r"[^\W\d_]+", fix, s)
+
+
 FIRED = "САНАИ_ХОРИҶ"                   # служебный ключ: колонка с датой увольнения (фильтр, в шаблонах не нужен)
 
 
 def _nk(x):
     """Для сравнения названий колонок: без регистра, пробелов и знаков; ҷ=ч, ё=е, ӣ=и."""
-    x = str(x).lower().replace("ҷ", "ч").replace("ё", "е").replace("ӣ", "и").replace("ӯ", "у").replace("ҳ", "х")
+    x = str(x).lower()
+    for a, b in (("ҷ", "ч"), ("ё", "е"), ("ӣ", "и"), ("ӯ", "у"), ("ҳ", "х"), ("қ", "к"), ("ғ", "г")):
+        x = x.replace(a, b)
     return re.sub(r"[\W_]+", "", x)
 
 
+# Типовые заголовки кадровой таблицы -> ключи шаблонов (сравнение без регистра и знаков)
+KNOWN = {
+    "САНА": ["САНАИ ҚАБУЛ"], "САНА_СОЛИ": ["САНАИ ҚАБУЛ"],
+    "ШИНОСНОМА": ["РАҚАМИ ШИНОСНОМА"], "ШИНОСНОМА_ЛАТ": ["РАҚАМИ ШИНОСНОМА"],
+    "МАҚОМ": ["МАҚОМИ ШИНОСНОМАДИҲАНДА"],
+    "РМА": ["РМА (ИНН)", "РМА", "ИНН"],
+    "ВАЗИФА": ["ВАЗИФА"], "ВАЗИФА_ХУРД": ["ВАЗИФА"], "СУРОҒА": ["СУРОҒА"],
+}
+FIO_PARTS = ("НАСАБ", "НОМ", "НОМИ ПАДАР")
+
+
 def auto_column(code, header):
+    """Индекс колонки, СПИСОК индексов (для ФИО из нескольких колонок) или None."""
+    nh = [_nk(h) for h in header]
     if code == FIRED:
-        for i, h in enumerate(header):
-            k = _nk(h)
+        for i, k in enumerate(nh):
             if k.startswith("санаихорич") or "увольн" in k or k in ("хорич", "хоричшудан"):
                 return i
         return None
-    for name in ALIASES.get(code, [code]):
+    if code == "ФИО":
+        parts = [nh.index(_nk(x)) for x in FIO_PARTS if _nk(x) in nh]
+        if len(parts) >= 2:
+            return parts
+    names = list(ALIASES.get(code, [code])) + KNOWN.get(code, [])
+    for name in names:
         if name in header:
             return header.index(name)
+    for name in names:
+        if _nk(name) in nh:
+            return nh.index(_nk(name))
     return None
+
+
+def valid_col(v, n):
+    if v is None:
+        return False
+    return all(isinstance(k, int) and k < n for k in (v if isinstance(v, list) else [v]))
+
+
+def col_label(m, header):
+    ms = m if isinstance(m, list) else [m]
+    return " + ".join(f"{col_letter(k)}: {header[k] or '(пусто)'}" for k in ms)
 
 
 def is_empty(v):
@@ -360,7 +407,7 @@ def choose_mapping(codes, header, saved):
         print(f"  {col_letter(i):>3} (№{i + 1}): {h or '(пусто)'}")
     mapping = {}
     for c in codes:
-        if c in saved and saved[c] is not None and saved[c] < len(header):
+        if c in saved and valid_col(saved[c], len(header)):
             mapping[c] = saved[c]
         else:
             mapping[c] = auto_column(c, header)
@@ -370,9 +417,9 @@ def choose_mapping(codes, header, saved):
             m = mapping[c]
             if c == FIRED:
                 print(f"  {n:>2}. ⛔ Санаи хориҷ (фильтр: берём только тех, у кого колонка ПУСТАЯ)  →  "
-                      + (f"{col_letter(m)}: {header[m] or '(пусто)'}" if m is not None else "— не выбрана (будут все работники)"))
+                      + (col_label(m, header) if m is not None else "— не выбрана (будут все работники)"))
                 continue
-            print(f"  {n:>2}. {{{c}}}  →  " + (f"{col_letter(m)}: {header[m] or '(пусто)'}" if m is not None else "— не выбрана (будут пробелы)"))
+            print(f"  {n:>2}. {{{c}}}  →  " + (col_label(m, header) if m is not None else "— не выбрана (будут пробелы)"))
         s = input("\nEnter = всё верно; или номер ключа, который изменить: ").strip()
         if not s:
             return mapping
@@ -381,15 +428,27 @@ def choose_mapping(codes, header, saved):
         except (ValueError, IndexError):
             print("Не понял.")
             continue
-        v = input(f"Для {'«Санаи хориҷ»' if code == FIRED else '{' + code + '}'} введите букву или номер колонки (A, B, 3 ...); 0 — не использовать: ").strip().upper()
-        if v == "0":
-            mapping[code] = None
-        elif v.isdigit() and 1 <= int(v) <= len(header):
-            mapping[code] = int(v) - 1
-        elif v.isalpha() and 1 <= openpyxl.utils.column_index_from_string(v) <= len(header):
-            mapping[code] = openpyxl.utils.column_index_from_string(v) - 1
-        else:
+        v = input(f"Для {'«Санаи хориҷ»' if code == FIRED else '{' + code + '}'} введите букву/номер колонки (A, B, 3 ...); "
+                  "несколько через запятую (F,G,H — склеятся через пробел); 0 — не использовать: ").strip().upper()
+        got, ok = [], bool(v)
+        for t in re.split(r"[,+;\s]+", v):
+            if not t:
+                continue
+            if t == "0":
+                got = []
+                break
+            if t.isdigit() and 1 <= int(t) <= len(header):
+                got.append(int(t) - 1)
+            elif t.isalpha() and 1 <= openpyxl.utils.column_index_from_string(t) <= len(header):
+                got.append(openpyxl.utils.column_index_from_string(t) - 1)
+            else:
+                ok = False
+        if not ok:
             print("Такой колонки нет.")
+        elif not got:
+            mapping[code] = None
+        else:
+            mapping[code] = got[0] if len(got) == 1 else got
 
 
 def main():
@@ -444,15 +503,27 @@ def main():
         json.dump(mapping, f, ensure_ascii=False, indent=1)
 
     fi = None if a.all else mapping.get(FIRED)
+    fi = fi[0] if isinstance(fi, list) else fi
+
+    def cell(r, k):
+        return r[k] if k < len(r) else ""
     people, skipped = [], []                          # skipped — уволенные (есть дата в «Санаи хориҷ»)
     for r in rows[hrow:]:
         if all(c in (None, "") for c in r):
             continue
-        row = {c: (r[i] if i is not None and i < len(r) else "") for c, i in mapping.items() if i is not None}
+        row = {}
+        for c, i in mapping.items():
+            if i is None:
+                continue
+            if isinstance(i, list):             # несколько колонок (например НАСАБ, НОМ, НОМИ ПАДАР) -> одна строка
+                row[c] = " ".join(str(cell(r, k)).strip() for k in i if not is_empty(cell(r, k)))
+            else:
+                row[c] = cell(r, i)
         p = Person(row)
-        if fi is not None and not is_empty(r[fi] if fi < len(r) else None):
-            d = to_date(r[fi]) if not isinstance(r[fi], str) else to_date(r[fi].strip())
-            skipped.append((p.label(), d.strftime("%d.%m.%Y") if d else str(r[fi]).strip()))
+        if fi is not None and not is_empty(cell(r, fi)):
+            v = cell(r, fi)
+            d = to_date(v.strip() if isinstance(v, str) else v)
+            skipped.append((p.label(), d.strftime("%d.%m.%Y") if d else str(v).strip()))
             continue
         people.append(p)
     if not people:
