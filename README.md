@@ -11,11 +11,9 @@
 - `doktrina/` — учебник по трудовому праву РТ (РТСУ, 2020), памятка ICNL «ТД vs ГПД»
 - `chek-list/` — печатный чек-лист самопроверки работодателя (PDF + HTML-исходник; PDF пересобирается: `chrome --headless --print-to-pdf`)
 - `shablony/` — шаблоны кадровых документов (.docx): заявления, приказы
-- `source/` — исходный .docx; `scripts/build_kodeks.py` — пересборка `kodeks/` из него
+- `source/` — исходный .docx кодекса
 
 ## Обновление редакции
 
-```
-python3 -m pip install python-docx
-python3 -I scripts/build_kodeks.py source/<новый файл>.docx kodeks/
-```
+Пришлите новый .docx кодекса в чат — Claude пересоберёт `kodeks/` (скрипты сборки из репозитория убраны 21.10.2026,
+при необходимости их можно вернуть из истории git).
