@@ -1,0 +1,177 @@
+{
+  "schema_version": "1.0",
+  "source_id": "tj-labor-commentary-2004",
+  "title": "Тафсири Кодекси меҳнати Ҷумҳурии Тоҷикистон",
+  "authors": [
+    "Худоёров Б. Т.",
+    "Шонасридинов Н.",
+    "Муқумова С. А."
+  ],
+  "responsible_editor": "Шонасридинов Н.",
+  "publisher": "ЭР-граф",
+  "place": "Душанбе",
+  "year": 2004,
+  "language": "tg-Cyrl",
+  "source_file_original_name": "tafsiri_kodeksi_mehnat 2004.pdf",
+  "source_file_sha256": "cbbc0f10f6c6929c2a1349a76d49ee5683dd1a6bb5c6eb8eb2e7c35e0440a725",
+  "source_library_id": "libfile_2ff0c09f25288191b87acede2fd89115",
+  "source_pdf_metadata": {
+    "format": "PDF 1.5",
+    "title": "",
+    "author": "acer",
+    "subject": "",
+    "keywords": "",
+    "creator": "Microsoft® Word 2010",
+    "producer": "Microsoft® Word 2010",
+    "creationDate": "D:20141112131644+03'00'",
+    "modDate": "D:20220920082857+05'00'",
+    "trapped": "",
+    "encryption": null
+  },
+  "pdf_pages": 457,
+  "printed_pages_stated_in_book": 480,
+  "authority": "historical_secondary_commentary_not_current_law",
+  "law_discussed": "Трудовой кодекс РТ от 15.05.1997; text as presented by commentary authors in 2004",
+  "current_code_reference": "ТК РТ от 23.07.2016 №1329; compare separately; this pack does not certify the latest edition",
+  "processing_date": "2026-10-22",
+  "ai_generated_guides": "README, AI instructions, HR topic guide and topic crosswalk are editorial navigation, not source text",
+  "source_pdf_included": true,
+  "prohibited_use": "Do not represent as current law, official binding interpretation, verified legal advice, or current numerical training labels.",
+  "quality": {
+    "pdf_pages": 457,
+    "bibliographic_print_pages": 480,
+    "printed_to_pdf_page_mapping": "not_assumed; original TOC references disagree with later reflow PDF pages",
+    "raw_characters": 948231,
+    "repaired_characters": 896890,
+    "glyph_repairs": 36534,
+    "repair_pair_count": 30,
+    "unmapped_glyphs": [
+      {
+        "font": "Arial,BoldItalic",
+        "character": " ",
+        "count": 57
+      }
+    ],
+    "trace_alignment_unmatched_characters": 24,
+    "alignment_fallback_details": [
+      {
+        "pdf_page": 21,
+        "character": " ",
+        "count": 1
+      },
+      {
+        "pdf_page": 29,
+        "character": " ",
+        "count": 2
+      },
+      {
+        "pdf_page": 59,
+        "character": " ",
+        "count": 2
+      },
+      {
+        "pdf_page": 65,
+        "character": " ",
+        "count": 2
+      },
+      {
+        "pdf_page": 70,
+        "character": " ",
+        "count": 1
+      },
+      {
+        "pdf_page": 106,
+        "character": " ",
+        "count": 1
+      },
+      {
+        "pdf_page": 114,
+        "character": " ",
+        "count": 3
+      },
+      {
+        "pdf_page": 182,
+        "character": " ",
+        "count": 2
+      },
+      {
+        "pdf_page": 248,
+        "character": " ",
+        "count": 1
+      },
+      {
+        "pdf_page": 299,
+        "character": " ",
+        "count": 2
+      },
+      {
+        "pdf_page": 333,
+        "character": " ",
+        "count": 1
+      },
+      {
+        "pdf_page": 354,
+        "character": " ",
+        "count": 2
+      },
+      {
+        "pdf_page": 375,
+        "character": " ",
+        "count": 1
+      },
+      {
+        "pdf_page": 379,
+        "character": " ",
+        "count": 1
+      },
+      {
+        "pdf_page": 392,
+        "character": " ",
+        "count": 2
+      }
+    ],
+    "removed_page_number_lines": 457,
+    "article_records": 265,
+    "chunks": 660,
+    "duplicate_source_article_numbers": {
+      "28": 2,
+      "104": 2
+    },
+    "base_article_numbers_without_detected_heading": [
+      90,
+      91,
+      92
+    ],
+    "source_body_pdf_pages": [
+      7,
+      442
+    ],
+    "source_toc_pdf_pages": [
+      443,
+      456
+    ],
+    "source_colophon_pdf_page": 457,
+    "editorial_review": "structural automated checks plus selected visual/semantic spot checks; not a line-by-line legal or spelling review",
+    "separation_of_statute_and_commentary": "candidate classification from font style only; keep labels provisional",
+    "completeness": "all supplied PDF pages retained; physical printed edition completeness not established",
+    "font_mapping_method": "PyMuPDF glyph ids resolved through embedded TrueType Unicode cmap; no blanket character substitution; no generative correction"
+  },
+  "included_source_pdf": "source/tafsir-2004-original.pdf",
+  "navigation": {
+    "hr_topics": 16,
+    "current_topic_routes": 117,
+    "glossary_terms": 22
+  },
+  "external_checks": [
+    {
+      "url": "https://mmih.tj/Search/DocumentView?DocumentId=127424",
+      "checked_on": "2026-10-22",
+      "scope": "Identity and active-card status of 2016 Code only; not full legal revalidation of all commentary or crosswalk routes."
+    },
+    {
+      "url": "https://zarowadk.com/huquqhoi_jt",
+      "checked_on": "2026-10-22",
+      "scope": "Public bibliography; uploaded PDF, not this website, is authoritative for this pack."
+    }
+  ]
+}
